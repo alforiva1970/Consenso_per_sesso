@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const timerDisplay = document.getElementById('timer-display');
     const statusBadge = document.getElementById('status-badge');
     const certCard = document.querySelector('.certificate-card');
+    const disclaimerModal = document.getElementById('disclaimer-modal');
+    const acceptDisclaimerBtn = document.getElementById('accept-disclaimer');
 
     // State
     let scanTimer = null;
@@ -52,181 +54,217 @@ document.addEventListener('DOMContentLoaded', () => {
                     command.includes('BASTA') ||
                     command.includes('NO') ||
                     command.includes('AIUTO')) {
+                    revokeConsent();
                 }
+            };
 
-                // Start camera immediately
-                initCamera();
-                initSpeechRecognition();
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error", event.error);
+                if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    recognition.onend = null; // Stop trying
+                    document.querySelector('.voice-monitor').style.display = 'none';
+                }
+            };
 
-                // Fingerprint Scanner Logic
-                const startScan = (e) => {
-                    e.preventDefault(); // Prevent scrolling/selection
-                    scannerBtn.classList.add('scanning');
-
-                    scanTimer = setTimeout(() => {
-                        completeScan();
-                    }, SCAN_DURATION);
-                };
-
-                const endScan = (e) => {
-                    if (e) e.preventDefault();
-                    scannerBtn.classList.remove('scanning');
-                    if (scanTimer) {
-                        clearTimeout(scanTimer);
-                        scanTimer = null;
+            recognition.onend = () => {
+                if (statusBadge.classList.contains('valid') && !document.hidden) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.log("Recognition restart failed", e);
                     }
-                };
-
-                // Touch events
-                scannerBtn.addEventListener('touchstart', startScan);
-                scannerBtn.addEventListener('touchend', endScan);
-                scannerBtn.addEventListener('touchcancel', endScan);
-
-                // Mouse events (for desktop testing)
-                scannerBtn.addEventListener('mousedown', startScan);
-                scannerBtn.addEventListener('mouseup', endScan);
-                scannerBtn.addEventListener('mouseleave', endScan);
-
-                function completeScan() {
-                    const p1 = document.getElementById('partner1').value.trim();
-                    const p2 = document.getElementById('partner2').value.trim();
-
-                    if (!p1 || !p2) {
-                        alert("Inserisci i nomi di entrambi i partner.");
-                        endScan();
-                        return;
-                    }
-
-                    // Capture Photo
-                    const context = canvas.getContext('2d');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const photoData = canvas.toDataURL('image/jpeg', 0.8);
-
-                    generateCertificate(p1, p2, photoData);
-                    endScan();
                 }
+            };
+        } else {
+            console.warn("Speech Recognition not supported");
+            document.querySelector('.voice-monitor').style.display = 'none';
+        }
+    }
 
-                async function generateCertificate(p1, p2, photoData) {
-                    const now = new Date();
-                    const timestamp = now.toISOString();
+    // Start camera immediately
+    initCamera();
+    initSpeechRecognition();
 
-                    // Display Data
-                    document.getElementById('display-p1').textContent = p1;
-                    document.getElementById('display-p2').textContent = p2;
-                    document.getElementById('saved-photo').src = photoData;
+    // Fingerprint Scanner Logic
+    const startScan = (e) => {
+        e.preventDefault(); // Prevent scrolling/selection
+        scannerBtn.classList.add('scanning');
 
-                    // Format readable time
-                    const dateStr = now.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
-                    const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    document.getElementById('cert-timestamp').textContent = `${dateStr} • ${timeStr}`;
+        scanTimer = setTimeout(() => {
+            completeScan();
+        }, SCAN_DURATION);
+    };
 
-                    // Generate Signature (Pseudo-Hash for demo)
-                    const dataString = `${p1}|${p2}|${timestamp}|${photoData.substring(0, 50)}`; // Partial data for hash
-                    const hash = await sha256(dataString);
-                    document.getElementById('sig-hash').textContent = hash;
+    const endScan = (e) => {
+        if (e) e.preventDefault();
+        scannerBtn.classList.remove('scanning');
+        if (scanTimer) {
+            clearTimeout(scanTimer);
+            scanTimer = null;
+        }
+    };
 
-                    // Reset UI State
-                    certCard.classList.remove('revoked-card');
-                    document.querySelector('.partners-display').classList.remove('revoked-overlay');
-                    document.querySelector('.photo-proof').classList.remove('revoked-overlay');
-                    panicBtn.style.display = 'block';
+    // Touch events
+    scannerBtn.addEventListener('touchstart', startScan);
+    scannerBtn.addEventListener('touchend', endScan);
+    scannerBtn.addEventListener('touchcancel', endScan);
 
-                    // Switch Views
-                    formView.classList.remove('active');
-                    formView.classList.add('hidden');
+    // Mouse events (for desktop testing)
+    scannerBtn.addEventListener('mousedown', startScan);
+    scannerBtn.addEventListener('mouseup', endScan);
+    scannerBtn.addEventListener('mouseleave', endScan);
 
-                    setTimeout(() => {
-                        certView.classList.remove('hidden');
-                        certView.classList.add('active');
-                        startConsentTimer();
-                        if (recognition) recognition.start();
-                    }, 500);
-                }
+    function completeScan() {
+        const p1 = document.getElementById('partner1').value.trim();
+        const p2 = document.getElementById('partner2').value.trim();
 
-                function startConsentTimer() {
-                    let remaining = CONSENT_DURATION;
-                    updateTimerDisplay(remaining);
+        if (!p1 || !p2) {
+            alert("Inserisci i nomi di entrambi i partner.");
+            endScan();
+            return;
+        }
 
-                    statusBadge.className = 'status-badge valid';
-                    statusBadge.innerHTML = '<span class="pulse"></span> ATTIVO';
-                    renewBtn.classList.add('hidden');
+        // Capture Photo
+        const context = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const photoData = canvas.toDataURL('image/jpeg', 0.8);
 
-                    if (consentTimer) clearInterval(consentTimer);
+        generateCertificate(p1, p2, photoData);
+        endScan();
+    }
 
-                    consentTimer = setInterval(() => {
-                        remaining--;
-                        updateTimerDisplay(remaining);
+    async function generateCertificate(p1, p2, photoData) {
+        const now = new Date();
+        const timestamp = now.toISOString();
 
-                        if (remaining <= 0) {
-                            expireConsent();
-                        }
-                    }, 1000);
-                }
+        // Display Data
+        document.getElementById('display-p1').textContent = p1;
+        document.getElementById('display-p2').textContent = p2;
+        document.getElementById('saved-photo').src = photoData;
 
-                function updateTimerDisplay(seconds) {
-                    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-                    const s = (seconds % 60).toString().padStart(2, '0');
-                    timerDisplay.textContent = `${m}:${s}`;
-                }
+        // Format readable time
+        const dateStr = now.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('cert-timestamp').textContent = `${dateStr} • ${timeStr}`;
 
-                function expireConsent() {
-                    clearInterval(consentTimer);
-                    if (recognition) recognition.stop();
+        // Generate Signature (Pseudo-Hash for demo)
+        const dataString = `${p1}|${p2}|${timestamp}|${photoData.substring(0, 50)}`; // Partial data for hash
+        const hash = await sha256(dataString);
+        document.getElementById('sig-hash').textContent = hash;
 
-                    timerDisplay.textContent = "00:00";
-                    statusBadge.className = 'status-badge expired';
-                    statusBadge.textContent = "SCADUTO";
-                    renewBtn.classList.remove('hidden');
-                    panicBtn.style.display = 'none';
-                }
+        // Reset UI State
+        certCard.classList.remove('revoked-card');
+        document.querySelector('.partners-display').classList.remove('revoked-overlay');
+        document.querySelector('.photo-proof').classList.remove('revoked-overlay');
+        panicBtn.style.display = 'block';
 
-                function revokeConsent() {
-                    clearInterval(consentTimer);
-                    if (recognition) recognition.stop();
+        // Switch Views
+        formView.classList.remove('active');
+        formView.classList.add('hidden');
 
-                    // UI Updates for Revocation
-                    statusBadge.className = 'status-badge revoked';
-                    statusBadge.textContent = "REVOCATO";
-                    timerDisplay.textContent = "STOP";
+        setTimeout(() => {
+            certView.classList.remove('hidden');
+            certView.classList.add('active');
+            startConsentTimer();
+            if (recognition) recognition.start();
+        }, 500);
+    }
 
-                    certCard.classList.add('revoked-card');
-                    document.querySelector('.partners-display').classList.add('revoked-overlay');
-                    document.querySelector('.photo-proof').classList.add('revoked-overlay');
+    function startConsentTimer() {
+        let remaining = CONSENT_DURATION;
+        updateTimerDisplay(remaining);
 
-                    panicBtn.style.display = 'none';
-                    renewBtn.classList.add('hidden'); // Cannot renew a revoked consent
+        statusBadge.className = 'status-badge valid';
+        statusBadge.innerHTML = '<span class="pulse"></span> ATTIVO';
+        renewBtn.classList.add('hidden');
 
-                    // Vibrate if supported
-                    if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
-                }
+        if (consentTimer) clearInterval(consentTimer);
 
-                // Crypto Helper
-                async function sha256(message) {
-                    const msgBuffer = new TextEncoder().encode(message);
-                    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-                    const hashArray = Array.from(new Uint8Array(hashBuffer));
-                    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-                }
+        consentTimer = setInterval(() => {
+            remaining--;
+            updateTimerDisplay(remaining);
 
-                // Event Listeners
-                resetBtn.addEventListener('click', () => {
-                    location.reload(); // Full reset
-                });
+            if (remaining <= 0) {
+                expireConsent();
+            }
+        }, 1000);
+    }
 
-                renewBtn.addEventListener('click', () => {
-                    // Go back to form, keep names, require new scan
-                    certView.classList.remove('active');
-                    certView.classList.add('hidden');
+    function updateTimerDisplay(seconds) {
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = (seconds % 60).toString().padStart(2, '0');
+        timerDisplay.textContent = `${m}:${s}`;
+    }
 
-                    setTimeout(() => {
-                        formView.classList.remove('hidden');
-                        formView.classList.add('active');
-                        // Ensure camera is still running
-                        if (!stream || !stream.active) initCamera();
-                    }, 500);
-                });
+    function expireConsent() {
+        clearInterval(consentTimer);
+        if (recognition) recognition.stop();
 
-                panicBtn.addEventListener('click', revokeConsent);
-            });
+        timerDisplay.textContent = "00:00";
+        statusBadge.className = 'status-badge expired';
+        statusBadge.textContent = "SCADUTO";
+        renewBtn.classList.remove('hidden');
+        panicBtn.style.display = 'none';
+    }
+
+    function revokeConsent() {
+        clearInterval(consentTimer);
+        if (recognition) recognition.stop();
+
+        // UI Updates for Revocation
+        statusBadge.className = 'status-badge revoked';
+        statusBadge.textContent = "REVOCATO";
+        timerDisplay.textContent = "STOP";
+
+        certCard.classList.add('revoked-card');
+        document.querySelector('.partners-display').classList.add('revoked-overlay');
+        document.querySelector('.photo-proof').classList.add('revoked-overlay');
+
+        panicBtn.style.display = 'none';
+        renewBtn.classList.add('hidden'); // Cannot renew a revoked consent
+
+        // Vibrate if supported
+        if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+    }
+
+    // Crypto Helper
+    async function sha256(message) {
+        const msgBuffer = new TextEncoder().encode(message);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
+    // Event Listeners
+    resetBtn.addEventListener('click', () => {
+        location.reload(); // Full reset
+    });
+
+    renewBtn.addEventListener('click', () => {
+        // Go back to form, keep names, require new scan
+        certView.classList.remove('active');
+        certView.classList.add('hidden');
+
+        setTimeout(() => {
+            formView.classList.remove('hidden');
+            formView.classList.add('active');
+            // Ensure camera is still running
+            if (!stream || !stream.active) initCamera();
+        }, 500);
+    });
+
+    panicBtn.addEventListener('click', revokeConsent);
+
+    // Disclaimer Logic
+    if (acceptDisclaimerBtn) {
+        acceptDisclaimerBtn.addEventListener('click', () => {
+            disclaimerModal.style.opacity = '0';
+            disclaimerModal.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => {
+                disclaimerModal.style.display = 'none';
+            }, 300);
+        });
+    }
+});
