@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Consenso</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Form View -->
+        <section id="consent-form" class="view active">
+            <header>
+                <h1>Consenso</h1>
+                <p class="subtitle">Registrazione biometrica del consenso.</p>
+            </header>
+
+            <form id="agreement-form">
+                <div class="input-group">
+                    <input type="text" id="partner1" placeholder="Nome Partner 1" required autocomplete="off">
+                </div>
+
+                <div class="input-group">
+                    <input type="text" id="partner2" placeholder="Nome Partner 2" required autocomplete="off">
+                </div>
+
+                <!-- Camera Section -->
+                <div class="camera-container">
+                    <video id="camera-feed" autoplay playsinline muted></video>
+                    <canvas id="photo-canvas" style="display: none;"></canvas>
+                    <div class="camera-overlay">
+                        <span>Inquadra entrambi i partner</span>
+                    </div>
+                </div>
+
+                <div class="terms-box">
+                    <p>Tenendo premuto lo scanner, confermiamo di essere coscienti e consenzienti. Foto e firma digitale
+                        saranno registrate.</p>
+                </div>
+
+                <!-- Fingerprint Scanner -->
+                <div class="scanner-container" id="scanner-btn">
+                    <div class="scanner-ring"></div>
+                    <div class="fingerprint-icon">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M12 2C14.5 2 16.5 4 16.5 6.5C16.5 9 14.5 11 12 11C9.5 11 7.5 9 7.5 6.5C7.5 4 9.5 2 12 2ZM12 22C7.5 22 4 18.5 4 14V13C4 11.5 5 10.5 6 10.5C7 10.5 7.5 11.5 8 12.5C8.5 13.5 9.5 14 10.5 14H13.5C14.5 14 15.5 13.5 16 12.5C16.5 11.5 17 10.5 18 10.5C19 10.5 20 11.5 20 13V14C20 18.5 16.5 22 12 22Z"
+                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path d="M12 14V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M9 17H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <div class="scan-text">Tieni premuto per firmare</div>
+                </div>
+            </form>
+
+            <footer>
+                <a href="https://github.com/sponsors" target="_blank" class="donate-btn">
+                    <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-4.477-4.477-9-9-9z" />
+                    </svg>
+                    <span>Supporta su GitHub</span>
+                </a>
+            </footer>
+        </section>
+
+        <!-- Certificate View -->
+        <section id="certificate-view" class="view hidden">
+            <div class="certificate-card">
+                <div class="status-badge valid" id="status-badge">
+                    <span class="pulse"></span> ATTIVO
+                </div>
+
+                <div class="timer-display" id="timer-display">15:00</div>
+                <div class="timer-label">Tempo rimanente</div>
+
+                <div class="photo-proof">
+                    <img id="saved-photo" src="" alt="Prova fotografica">
+                </div>
+
+                <div class="partners-display">
+                    <div class="partner-name" id="display-p1"></div>
+                    <div class="connector">&</div>
+                    <div class="partner-name" id="display-p2"></div>
+                </div>
+
+                <div class="digital-signature-box">
+                    <div class="sig-label">FIRMA DIGITALE IMMUTABILE</div>
+                    <div class="sig-hash" id="sig-hash"></div>
+                    <div class="sig-ts" id="cert-timestamp"></div>
+                </div>
+
+                <div class="voice-monitor">
+                    <div class="mic-icon">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M12 14C13.6569 14 15 12.6569 15 11V5C15 3.34315 13.6569 2 12 2C10.3431 2 9 3.34315 9 5V11C9 12.6569 10.3431 14 12 14Z"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M19 10V11C19 14.866 15.866 18 12 18C8.13401 18 5 14.866 5 11V10"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M12 18V22" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path d="M8 22H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                    <span class="monitor-text">Safe Word Attiva: "STOP" / "BASTA"</span>
+                </div>
+            </div>
+
+            <button id="panic-btn" class="panic-btn">REVOCA SUBITO</button>
+            <button id="renew-btn" class="primary-btn hidden">Rinnova Consenso (+15m)</button>
+            <button id="reset-btn" class="secondary-btn">Nuova Sessione</button>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+
+</html>
